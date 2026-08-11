@@ -3,6 +3,25 @@
 *(Ukrainian readers: this changelog is maintained in English only — see [README.uk.md](README.uk.md) for a Ukrainian project overview.)*
 *(Українською: цей журнал змін ведеться лише англійською — див. [README.uk.md](README.uk.md) для огляду проєкту українською.)*
 
+## [0.2.0] - 2026-08-11
+### Added
+- Version stamping: `BridgeTool/scripts/stamp_version.py` writes the repo's
+  `VERSION` into `BridgeTool.xml`'s `<Comment>` and a new BSL
+  `ВерсіяBridgeTool()` function in `ObjectModule.bsl`.
+- `Module.bsl` logs the BridgeTool version as the first `bridge_startup.log`
+  line and appends `version=X` to `ready.txt`'s content.
+- `migrator.py` reads `VERSION` at import time, logs it at session start, and
+  warns (does not fail) if the running `BridgeTool.epf`'s reported version
+  doesn't match.
+- `migrator/_version.py`: single source of truth for the Python side's
+  version string.
+### Fixed
+- `migrator.py`: reconfigured stdout/stderr to UTF-8 (`errors="replace"`) -
+  Cyrillic status prints were crashing with `UnicodeEncodeError` on a
+  default-codepage Windows console.
+- Verified: live COM-read (TEST_SKI_HIRE) + BridgeTool-write (DEV) round
+  trip against the rebuilt `BridgeTool.epf` (v0.2.0).
+
 ## [0.1.0] - 2026-08-11
 ### Added
 - Initial repo scaffold: `VERSION`, `.gitignore`/`.gitattributes`, `pyproject.toml`,

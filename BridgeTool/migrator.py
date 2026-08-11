@@ -16,8 +16,16 @@ BridgeTool сам не знає нічого про конкретні дові�
 import datetime
 import json
 import subprocess
+import sys
 import time
 from pathlib import Path
+
+# Повідомлення нижче містять кирилицю - консоль Windows за замовчуванням
+# (cp1252/cp866, не UTF-8) валить print() з UnicodeEncodeError. errors="replace"
+# (не "strict") - краще нечитабельний символ, ніж crash посеред переносу.
+for _stream in (sys.stdout, sys.stderr):
+    if hasattr(_stream, "reconfigure"):
+        _stream.reconfigure(encoding="utf-8", errors="replace")
 
 TOOL_DIR = Path(__file__).resolve().parent
 COM_QUERY_SCRIPT = TOOL_DIR / "com_query.ps1"
@@ -31,6 +39,10 @@ COM_QUERY_SCRATCH = TOOL_DIR / "_com_query_result.json"
 # логу при кожному запуску (ЗапускПараметр() недоступна зовнішнім
 # обробкам, тому командний рядок як канал передачі не підходить).
 LAUNCH_CONFIG_FILE = TOOL_DIR / "_launch_config.txt"
+# Версія читається напряму з VERSION у корені репозиторію (той самий файл,
+# що читає migrator/_version.py) - без імпорту пакета migrator, бо цей
+# скрипт живе в іншій папці (BridgeTool/) і пакетом не є.
+MIGRATOR_VERSION = (TOOL_DIR.parent / "VERSION").read_text(encoding="utf-8").strip()
 
 
 def _running_1c_client_pids() -> list[str]:
@@ -165,6 +177,7 @@ class Bridge1C:
             launch_config_lines.append(str(self.bridge_log_dir))
         LAUNCH_CONFIG_FILE.write_text("\n".join(launch_config_lines), encoding="utf-8-sig")
 
+        self._log(f"Migrator version: {MIGRATOR_VERSION}")
         self._log(f"Спроба запуску BridgeTool (epf={self.epf_path}, exchange={self.exchange_dir})")
         launch_time = time.monotonic()
         self._proc = subprocess.Popen(self._build_launch_command())
@@ -197,6 +210,23 @@ class Bridge1C:
         startup_time = time.monotonic() - launch_time
         self._log(f"BridgeTool готовий за {startup_time:.1f} сек")
         print(f"[BridgeTool готовий за {startup_time:.1f} сек]")
+
+        # Звіряємо версію .epf, що реально відповів (ready.txt "version=X"),
+        # з версією Migrator (VERSION) - лише попередження, не помилка, бо
+        # неспівпадіння не заважає роботі, але точно варто помітити (джерело
+        # кількагодинного розслідування зависань під час пілотної сесії
+        # було саме "який .epf реально запущено").
+        try:
+            ready_text = ready_file.read_text(encoding="utf-8")
+            bridge_version = ready_text.rsplit("version=", 1)[-1].strip() if "version=" in ready_text else None
+            if bridge_version and bridge_version != MIGRATOR_VERSION:
+                self._log(
+                    f"ПОПЕРЕДЖЕННЯ: версія BridgeTool.epf ({bridge_version}) "
+                    f"не збігається з версією Migrator ({MIGRATOR_VERSION})"
+                )
+                print(f"[УВАГА: версія BridgeTool.epf={bridge_version}, версія Migrator={MIGRATOR_VERSION}]")
+        except OSError:
+            pass
 
         # Ще один "пінг" через повний цикл запит/відповідь - переконатись,
         # що цикл очікування (ПодключитьОбработчикОжидания) справді працює,
