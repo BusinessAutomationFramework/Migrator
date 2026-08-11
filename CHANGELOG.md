@@ -3,6 +3,27 @@
 *(Ukrainian readers: this changelog is maintained in English only — see [README.uk.md](README.uk.md) for a Ukrainian project overview.)*
 *(Українською: цей журнал змін ведеться лише англійською — див. [README.uk.md](README.uk.md) для огляду проєкту українською.)*
 
+## [1.0.0] - 2026-08-11
+### Summary
+First complete release. Starting from a hand-built, one-off pilot script
+that successfully moved the "Склады" catalog once, this project generalized
+that experience into a reusable, schema-driven, documented tool:
+- A declarative `schema.yaml` format covering source/destination shape,
+  field mapping, related-catalog cascading with configurable depth/detail,
+  tabular parts, pipeline hooks, and destination write-time bypass flags.
+- `migrator/engine.py`, running any task against that format over a single
+  shared BridgeTool session.
+- A local GUI for settings and process control, needing no terminal.
+- Bilingual (EN/UK) documentation and three lessons-learned Claude Code
+  skills contributed back to the shared `cc-1c-skills` pack.
+- An acceptance test that not only reproduced the original pilot's result
+  but exceeded it: the original pilot moved one catalog; this run moves
+  the same catalog **and cascades to 8 related catalogs**, with the one
+  incomplete cascade traced to a genuine source data gap rather than a
+  code defect - see [0.8.0] below for the full breakdown.
+No BridgeTool/Python changes in this step - version bump and status/docs
+update only, marking the project's stated goal (`1.0.0`) as reached.
+
 ## [0.8.0] - 2026-08-11
 ### Acceptance test (the project's core deliverable)
 `python -m migrator run bukovel-legacy:warehouse` - full, unlimited run:

@@ -33,11 +33,12 @@ Tasks are `schema.yaml` files under a registered task root (see
 
 ## Status
 
-v0.5.0 - the schema-driven engine (source/destination schema, field
-mappings, related-catalog cascading, pipeline hooks, tabular parts) and a
-local GUI (dashboard, schema editor, live monitor, settings) are working end
-to end. The final acceptance test (a full "Склады" transfer) is in progress
-- see `CHANGELOG.md`.
+v1.0.0 - complete: the schema-driven engine (source/destination schema,
+field mappings, related-catalog cascading, pipeline hooks, tabular parts),
+a local GUI (dashboard, schema editor, live monitor, settings), bilingual
+docs, and reusable lessons-learned Claude Code skills. The acceptance test
+(a full, unlimited "Склады" transfer cascading to 8 related catalogs) is
+verified - see `CHANGELOG.md` for the detailed results.
 
 ## License
 
