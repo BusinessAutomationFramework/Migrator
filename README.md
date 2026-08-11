@@ -14,10 +14,22 @@ internal UUIDs, using:
 - **COM** — used only by the Python orchestrator, to read from the *source*
   base (via a 32-bit PowerShell helper), never by BridgeTool itself.
 
+## Usage
+
+    python -m migrator run <root>:<task> [--limit N]   # run a transfer task
+    python -m migrator suggest <root>:<task>           # suggest related_catalogs
+    python -m migrator gui                              # local web dashboard
+
+Tasks are `schema.yaml` files under a registered task root (see
+`migrator.config.example.yaml`).
+
 ## Status
 
-v0.1.0 - early scaffold. The schema-driven engine, GUI, and documentation are
-under active development. See `CHANGELOG.md` for progress.
+v0.5.0 - the schema-driven engine (source/destination schema, field
+mappings, related-catalog cascading, pipeline hooks, tabular parts) and a
+local GUI (dashboard, schema editor, live monitor, settings) are working end
+to end. Full documentation and the final acceptance test are in progress -
+see `CHANGELOG.md`.
 
 ## License
 

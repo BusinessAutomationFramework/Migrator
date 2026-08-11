@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Migrator - Settings{% endblock %}
+{% block content %}
+<h1>Settings</h1>
+<p class="muted">migrator.config.yaml - registry of task roots. Each root is a directory that may contain several tasks (subfolders with a schema.yaml).</p>
+
+{% if error %}<pre class="log" style="border:1px solid #c33">{{ error }}</pre>{% endif %}
+{% if saved %}<p class="badge ok">saved</p>{% endif %}
+
+<form method="post" action="/settings">
+  <textarea name="content" spellcheck="false">{{ content }}</textarea>
+  <p><button type="submit">Save</button></p>
+</form>
+
+<h2>Registered roots</h2>
+<table>
+  <tr><th>Name</th><th>Path</th></tr>
+  {% for name, cfg in roots.items() %}
+    <tr><td>{{ name }}</td><td class="muted">{{ cfg.path }}</td></tr>
+  {% endfor %}
+</table>
+{% endblock %}

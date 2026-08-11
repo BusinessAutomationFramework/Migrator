@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Migrator - monitor {{ task }}{% endblock %}
+{% block content %}
+<h1>{{ root }}:{{ task }} <span id="status-badge" class="badge {{ 'running' if running else 'ok' }}">{{ 'running' if running else 'idle' }}</span></h1>
+<p><a href="/schema/{{ root }}/{{ task }}">← back to schema</a></p>
+
+<p class="row">
+  <label>Session:
+    <select id="session-select" onchange="location.href='/monitor/{{ root }}/{{ task }}?session=' + this.value">
+      {% for s in sessions %}
+        <option value="{{ s }}" {{ 'selected' if s == active_session else '' }}>{{ s }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <span id="bridge-version" class="muted"></span>
+</p>
+
+<h2>engine.log <span class="muted">(orchestration - fetch/write/cascade steps)</span></h2>
+<pre class="log" id="engine-log"></pre>
+
+<h2>write_progress.log <span class="muted">(written BY BridgeTool - per-item progress)</span></h2>
+<pre class="log" id="write-log"></pre>
+
+<h2>bridge_startup.log <span class="muted">(written BY BridgeTool - startup lifecycle)</span></h2>
+<pre class="log" id="bridge-log"></pre>
+
+<script>
+const root = {{ root|tojson }}, task = {{ task|tojson }}, session = {{ active_session|tojson }};
+function tail() {
+  if (!session) return;
+  fetch(`/monitor/${root}/${task}/tail?session=${session}`)
+    .then(r => r.json())
+    .then(data => {
+      document.getElementById('engine-log').textContent = data.engine_log || '(empty)';
+      document.getElementById('write-log').textContent = data.write_progress_log || '(empty)';
+      document.getElementById('bridge-log').textContent = data.bridge_startup_log || '(empty)';
+      document.getElementById('bridge-version').textContent = data.bridge_version ? ('BridgeTool version: ' + data.bridge_version) : '';
+      const badge = document.getElementById('status-badge');
+      badge.textContent = data.running ? 'running' : 'idle';
+      badge.className = 'badge ' + (data.running ? 'running' : 'ok');
+      if (data.running) setTimeout(tail, 2000);
+    });
+}
+tail();
+</script>
+{% endblock %}

@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Migrator - Dashboard{% endblock %}
+{% block content %}
+<h1>Migrator</h1>
+<p class="muted">Task roots from migrator.config.yaml. Each task is a folder with its own schema.yaml.</p>
+
+{% for section in root_sections %}
+  <h2>{{ section.name }} <span class="muted">({{ section.path }})</span></h2>
+  {% if section.tasks %}
+    <table>
+      <tr><th>Task</th><th>Last run</th><th>Status</th><th></th></tr>
+      {% for t in section.tasks %}
+        <tr>
+          <td><a href="/schema/{{ t.root }}/{{ t.task }}">{{ t.task }}</a></td>
+          <td class="muted">{{ t.last_run.session if t.last_run else "—" }}</td>
+          <td>{{ t.last_run.last_line if t.last_run else "never run" }}</td>
+          <td>
+            {% if t.last_run %}
+              <a href="/monitor/{{ t.root }}/{{ t.task }}">monitor</a>
+            {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+    </table>
+  {% else %}
+    <p class="muted">No tasks with schema.yaml found in this root yet.</p>
+  {% endif %}
+{% endfor %}
+{% endblock %}

@@ -3,6 +3,7 @@ TransferDATA/*/data/
 TransferDATA/*/logs/
 TransferDATA/*/exchange/
 TransferDATA/*/reports/*.tmp
+TransferDATA/*/schema.yaml.tmp
 
 # BridgeTool runtime bootstrap file - written fresh by the launcher before
 # every 1cv8.exe spawn, never source

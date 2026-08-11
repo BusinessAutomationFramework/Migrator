@@ -3,6 +3,31 @@
 *(Ukrainian readers: this changelog is maintained in English only — see [README.uk.md](README.uk.md) for a Ukrainian project overview.)*
 *(Українською: цей журнал змін ведеться лише англійською — див. [README.uk.md](README.uk.md) для огляду проєкту українською.)*
 
+## [0.5.0] - 2026-08-11
+### Added
+- `gui/` - a local FastAPI web app (`python -m migrator gui [--host] [--port]`),
+  filesystem-only (starts transfer runs as a separate `python -m migrator run`
+  subprocess; never touches 1C/COM/BridgeTool directly itself):
+  - **Dashboard** (`/`) - task roots from `migrator.config.yaml`, tasks found
+    in each (folders with a `schema.yaml`), and each task's last run status.
+  - **Schema editor** (`/schema/<root>/<task>`) - raw YAML textarea, save
+    (validated against a scratch copy before overwriting), and an
+    AJAX "validate without saving" button; a form to trigger a run
+    (optionally `--limit`) directly from the page.
+  - **Live monitor** (`/monitor/<root>/<task>`) - session picker, live
+    running/idle badge, and the three logs a run produces
+    (`engine.log`, `write_progress.log`, `bridge_startup.log` +
+    parsed BridgeTool version), polled every 2s while running.
+  - **Settings** (`/settings`) - view/edit `migrator.config.yaml`'s
+    task-root registry directly.
+- `requirements.txt`: `python-multipart` (required by FastAPI for HTML
+  form parsing).
+### Verified
+- Full round trip through the GUI itself: dashboard → schema editor
+  (validate) → triggered a real 3-row transfer + 2 cascades via the
+  "Run now" form → monitor page auto-updated from "running" to "idle"
+  with all three logs populated and the correct BridgeTool version shown.
+
 ## [0.4.0] - 2026-08-11
 ### Added
 - Tabular parts (табличные части) are now transferred end-to-end:

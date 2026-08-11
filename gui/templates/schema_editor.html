@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Migrator - {{ task }}{% endblock %}
+{% block content %}
+<h1>{{ root }}:{{ task }}</h1>
+<p class="row">
+  {% if error %}<span class="badge err">invalid</span>{% else %}<span class="badge ok">valid</span>{% endif %}
+  {% if saved %}<span class="muted">saved.</span>{% endif %}
+  <a href="/monitor/{{ root }}/{{ task }}">monitor →</a>
+</p>
+
+{% if error %}<pre class="log" style="border:1px solid #c33">{{ error }}</pre>{% endif %}
+
+<form method="post" action="/schema/{{ root }}/{{ task }}">
+  <textarea name="content" id="content" spellcheck="false">{{ content }}</textarea>
+  <p class="row">
+    <button type="submit">Save</button>
+    <button type="button" onclick="validateOnly()">Validate without saving</button>
+    <span id="validate-result" class="muted"></span>
+  </p>
+</form>
+
+<h2>Run this task</h2>
+<form method="post" action="/run/{{ root }}/{{ task }}" class="row">
+  <label>Limit (optional, for a smoke test): <input type="number" name="limit" min="1" placeholder="e.g. 5"></label>
+  <button type="submit">Run now</button>
+</form>
+
+<script>
+function validateOnly() {
+  const content = document.getElementById('content').value;
+  const body = new URLSearchParams({content});
+  fetch(window.location.pathname + '/validate', {method: 'POST', body})
+    .then(r => r.json())
+    .then(data => {
+      const el = document.getElementById('validate-result');
+      el.textContent = data.ok ? 'OK - schema is valid.' : ('Invalid: ' + data.error);
+      el.style.color = data.ok ? 'green' : 'crimson';
+    });
+}
+</script>
+{% endblock %}

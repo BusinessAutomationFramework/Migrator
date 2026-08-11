@@ -3,12 +3,16 @@
 
     python -m migrator run <root>:<task> [--limit N] [--log-dir DIR]
     python -m migrator suggest <root>:<task> [--sample N]
+    python -m migrator gui [--host HOST] [--port PORT]
 
 "run" - виконати завдання переносу за його schema.yaml.
 "suggest" - зробити невелику пробну вибірку з джерела (--sample записів,
 за замовчуванням 20) і вивести YAML-заготовку related_catalogs для ВСІХ
 __ref_type__, що реально трапились - початкова точка для "auto-suggest
 пов'язаних довідників", яку користувач потім звіряє/редагує вручну.
+"gui" - локальний веб-інтерфейс (dashboard/редактор схем/монітор/settings) -
+запускає перенос як ОКРЕМИЙ процес цього ж CLI, сам ніколи не звертається
+до 1С/COM.
 """
 
 from __future__ import annotations
@@ -66,6 +70,12 @@ def cmd_suggest(args: argparse.Namespace) -> None:
         print("    depth: 1")
 
 
+def cmd_gui(args: argparse.Namespace) -> None:
+    import uvicorn
+
+    uvicorn.run("gui.app:app", host=args.host, port=args.port, reload=False)
+
+
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(prog="migrator", description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
@@ -80,6 +90,11 @@ def main(argv: list[str] | None = None) -> None:
     suggest_parser.add_argument("task", help="<корінь>:<завдання>")
     suggest_parser.add_argument("--sample", type=int, default=20, help="Розмір пробної вибірки (за замовч. 20)")
     suggest_parser.set_defaults(func=cmd_suggest)
+
+    gui_parser = sub.add_parser("gui", help="Запустити локальний веб-інтерфейс (FastAPI)")
+    gui_parser.add_argument("--host", default="127.0.0.1")
+    gui_parser.add_argument("--port", type=int, default=8765)
+    gui_parser.set_defaults(func=cmd_gui)
 
     args = parser.parse_args(argv)
     args.func(args)

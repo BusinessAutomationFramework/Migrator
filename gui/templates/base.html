@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<title>{% block title %}Migrator{% endblock %}</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { font-family: -apple-system, Segoe UI, Roboto, sans-serif; max-width: 1000px; margin: 0 auto; padding: 24px; line-height: 1.5; }
+  nav { display: flex; gap: 16px; margin-bottom: 24px; padding-bottom: 12px; border-bottom: 1px solid #8884; }
+  nav a { text-decoration: none; font-weight: 600; opacity: 0.75; }
+  nav a:hover { opacity: 1; }
+  h1 { font-size: 1.4rem; }
+  h2 { font-size: 1.1rem; margin-top: 2em; }
+  table { border-collapse: collapse; width: 100%; margin: 12px 0; }
+  th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid #8883; font-size: 0.92rem; }
+  code, pre, textarea { font-family: Consolas, Menlo, monospace; }
+  textarea { width: 100%; min-height: 420px; font-size: 0.85rem; padding: 10px; box-sizing: border-box; }
+  pre.log { background: #8881; padding: 10px; max-height: 420px; overflow: auto; font-size: 0.8rem; white-space: pre-wrap; }
+  button, input[type=submit] { padding: 6px 14px; cursor: pointer; }
+  .badge { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 0.78rem; }
+  .badge.ok { background: #2a4; color: white; }
+  .badge.err { background: #c33; color: white; }
+  .badge.running { background: #d90; color: white; }
+  .row { display: flex; gap: 8px; align-items: center; }
+  .muted { opacity: 0.65; font-size: 0.85rem; }
+  form.inline { display: inline; }
+</style>
+</head>
+<body>
+<nav>
+  <a href="/">Dashboard</a>
+  <a href="/settings">Settings</a>
+</nav>
+{% block content %}{% endblock %}
+</body>
+</html>
