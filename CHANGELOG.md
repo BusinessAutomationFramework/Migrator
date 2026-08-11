@@ -3,6 +3,25 @@
 *(Ukrainian readers: this changelog is maintained in English only — see [README.uk.md](README.uk.md) for a Ukrainian project overview.)*
 *(Українською: цей журнал змін ведеться лише англійською — див. [README.uk.md](README.uk.md) для огляду проєкту українською.)*
 
+## [0.6.0] - 2026-08-11
+### Added
+- Bilingual documentation under `docs/` (EN primary + UK translation, same
+  top-of-file language-switcher link pattern as the READMEs):
+  - `architecture.md`/`.uk.md` - why two interfaces (COM for source reads,
+    BridgeTool for destination writes), the bootstrap-file exchange
+    protocol, the two universal BSL primitives, and the engine pipeline.
+  - `schema-format-reference.md`/`.uk.md` - every `schema.yaml` field
+    (`source`, `destination`, `select_mode`, `field_mappings`,
+    `related_catalogs`, `tabular_parts`, `destination_write_options`,
+    `hooks`), with the real `bukovel-legacy:warehouse` task as reference.
+  - `gui.md`/`.uk.md` - the local web dashboard's pages and what it
+    deliberately doesn't do (no auth, no multi-user queue).
+- README.md/README.uk.md now link to the new docs and list the CLI's three
+  subcommands (`run`/`suggest`/`gui`).
+### Note
+- No BridgeTool/COM changes this step - docs only, so no E2E transfer test
+  applies here (see CHANGELOG for the last verified run in [0.5.0]).
+
 ## [0.5.0] - 2026-08-11
 ### Added
 - `gui/` - a local FastAPI web app (`python -m migrator gui [--host] [--port]`),

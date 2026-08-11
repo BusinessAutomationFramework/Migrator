@@ -23,13 +23,21 @@ internal UUIDs, using:
 Tasks are `schema.yaml` files under a registered task root (see
 `migrator.config.example.yaml`).
 
+## Documentation
+
+- [docs/architecture.md](docs/architecture.md) - why two interfaces
+  (COM + BridgeTool), the exchange protocol, the engine pipeline.
+- [docs/schema-format-reference.md](docs/schema-format-reference.md) -
+  every `schema.yaml` field, explained.
+- [docs/gui.md](docs/gui.md) - the local web dashboard.
+
 ## Status
 
 v0.5.0 - the schema-driven engine (source/destination schema, field
 mappings, related-catalog cascading, pipeline hooks, tabular parts) and a
 local GUI (dashboard, schema editor, live monitor, settings) are working end
-to end. Full documentation and the final acceptance test are in progress -
-see `CHANGELOG.md`.
+to end. The final acceptance test (a full "Склады" transfer) is in progress
+- see `CHANGELOG.md`.
 
 ## License
 
