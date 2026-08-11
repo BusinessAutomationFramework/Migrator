@@ -3,6 +3,22 @@
 *(Ukrainian readers: this changelog is maintained in English only — see [README.uk.md](README.uk.md) for a Ukrainian project overview.)*
 *(Українською: цей журнал змін ведеться лише англійською — див. [README.uk.md](README.uk.md) для огляду проєкту українською.)*
 
+## [1.2.0] - 2026-08-11
+### Added
+- Optional `filter` field on `schema.yaml`: a raw 1C query-language `ГДЕ`
+  condition (no leading keyword), appended verbatim by
+  `TransferSchema.select_query()` for both `select_mode: all` and
+  `explicit`. Lets a task read a known, named subset of a large catalog
+  (e.g. a handful of predefined items already declared in the destination
+  configuration) instead of a full-catalog mirror - motivated by the
+  "Номенклатура" services-list task, where the destination only needed 16
+  specific predefined rental-service items out of the whole nomenclature
+  catalog. Deliberately unparameterized, same rationale as the existing
+  `related_catalogs` simplification in `cascade.py`: the condition is
+  written once, by a human, against values already fixed at schema-authoring
+  time, so plain string interpolation is sufficient. Omit (default `""`) to
+  keep existing tasks (e.g. `warehouse`) reading the whole object, unchanged.
+
 ## [1.1.0] - 2026-08-11
 ### Fixed
 - `ЗаписатиЕлементи` now sets the **standard** 1C `Объект.ОбменДанными.Загрузка = Истина`

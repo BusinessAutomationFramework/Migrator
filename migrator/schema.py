@@ -90,6 +90,13 @@ class TransferSchema:
     schema_version: int = 1
     description: str = ""
     select_mode: str = "all"  # "all" -> SELECT *; "explicit" -> лише field_mappings
+    # Сирий текст умови ГДЕ (без самого слова "ГДЕ") - той САМИЙ рядок, який
+    # ти б написав у Конструкторі запитів 1С. Свідомо НЕ параметризований
+    # (на відміну від related_catalogs, де параметризація через com_query.ps1
+    # визнана зайвою складністю - див. cascade.py): тут значення відомі й
+    # стабільні на етапі написання схеми (напр. конкретний вид номенклатури),
+    # тому підстановка просто у текст запиту нічого не ускладнює.
+    filter: str = ""
     field_mappings: list[FieldMapping] = field(default_factory=list)
     related_catalogs: list[RelatedCatalogRule] = field(default_factory=list)
     tabular_parts: list[TabularPartSpec] = field(default_factory=list)
@@ -127,9 +134,10 @@ class TransferSchema:
     def select_query(self, limit: int | None = None) -> str:
         top = f"ПЕРВЫЕ {limit} " if limit else ""
         object_ref = f"{self.kind}.{self.name}"
+        where = f" ГДЕ {self.filter}" if self.filter else ""
 
         if self.select_mode == "all" or not self.field_mappings:
-            return f"ВЫБРАТЬ {top}* ИЗ {object_ref}"
+            return f"ВЫБРАТЬ {top}* ИЗ {object_ref}{where}"
 
         if self.select_mode != "explicit":
             raise ValueError(f"{self.task}: invalid select_mode={self.select_mode!r}")
@@ -142,7 +150,7 @@ class TransferSchema:
                 columns.append(mapping.source_field)
             else:
                 columns.append(f"{mapping.source_field} КАК {mapping.destination_field}")
-        return f"ВЫБРАТЬ {top}{', '.join(columns)} ИЗ {object_ref}"
+        return f"ВЫБРАТЬ {top}{', '.join(columns)} ИЗ {object_ref}{where}"
 
 
 def load_schema(path: str | Path) -> TransferSchema:
@@ -165,6 +173,7 @@ def load_schema(path: str | Path) -> TransferSchema:
         schema_version=raw.get("schema_version", 1),
         description=raw.get("description", ""),
         select_mode=raw.get("select_mode", "all"),
+        filter=raw.get("filter", ""),
         field_mappings=field_mappings,
         related_catalogs=related_catalogs,
         tabular_parts=tabular_parts,

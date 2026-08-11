@@ -56,6 +56,30 @@ pilot deployment).
   `ЭтоГруппа`/`Родитель`/`Предопределенный`/`ИмяПредопределенныхДанных`).
   Use this only when you deliberately want to restrict what's read.
 
+## `filter` - restricting which rows are read
+
+```yaml
+filter: >
+  (ВидНоменклатуры = ЗНАЧЕНИЕ(Справочник.ВидыНоменклатуры.УслугиПроката)
+    ИЛИ ВидНоменклатуры = ЗНАЧЕНИЕ(Справочник.ВидыНоменклатуры.УслугиПрокатаЛетнего))
+  И ЧекИН = ИСТИНА
+```
+
+Raw 1C query-language condition text (no leading `ГДЕ`) appended verbatim as
+the `ГДЕ` clause of `select_query()` - works with both `select_mode: all`
+and `explicit`. Optional; omit (or leave empty) to read the whole catalog/
+document, as `warehouse` does.
+
+Deliberately **not** parameterized (unlike `related_catalogs`, where
+parameterizing `Ссылка В (&Список)` over COM was judged not worth the
+complexity - see `cascade.py`): a `filter` is written once, by a human, at
+schema-authoring time, referencing values that are already fixed and known
+(an enum value, a boolean flag) - there is no per-run substitution to do, so
+plain string interpolation into the query text is the whole mechanism. Use
+this instead of a full-catalog transfer whenever the destination only needs
+a known, named subset (e.g. a handful of predefined items already declared
+in the destination configuration) rather than a full mirror.
+
 ## `field_mappings` - the "Schema 1 ↔ Schema 2" transport mapping
 
 This is the field-level mapping the user asked for explicitly: a stable
