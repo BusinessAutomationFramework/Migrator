@@ -3,6 +3,52 @@
 *(Ukrainian readers: this changelog is maintained in English only — see [README.uk.md](README.uk.md) for a Ukrainian project overview.)*
 *(Українською: цей журнал змін ведеться лише англійською — див. [README.uk.md](README.uk.md) для огляду проєкту українською.)*
 
+## [0.8.0] - 2026-08-11
+### Acceptance test (the project's core deliverable)
+`python -m migrator run bukovel-legacy:warehouse` - full, unlimited run:
+- **Справочник.Склады: 131/131** written, UUIDs preserved, verified by a
+  full field-by-field source/destination comparison plus a tabular-part
+  row-count spot check (42/45 sampled matched exactly; the 3 that didn't
+  are explained below).
+- Cascaded to 8 related catalogs (`suggest`'s full list minus the
+  self-reference): **7/8 100%** (ВидыЦен 25/25, СтруктураПредприятия
+  126/126, БизнесРегионы 0/0, Календари 1/1, КлассификаторКОАТУУ 0/0,
+  СпособыОбеспеченияПотребностей 0/0, ФизическиеЛица 361/361).
+  Справочник.КассыККМ (159 rows) is a **known, documented, non-code
+  limitation**: every source row has an empty composite-type "Владелец"
+  field, and the destination's own business logic requires a
+  non-blank derived "Организация" on write - a source data-completeness
+  gap, not a transfer defect (see `schema.yaml`'s `related_catalogs` entry).
+- Remaining field-level differences are the same categories the original
+  hand-built pilot already found and accepted: group-record field resets,
+  and `Формат()`'s "empty date" (0001-01-01) rendering as `""` in BSL
+  vs. a literal digit string from COM/.NET `.ToString()` - both sides
+  store the identical date value, confirmed by direct testing.
+- `fetch_catalog.py`/`write_catalog.py` retired - moved to
+  `_retired/` (not deleted; that task root isn't version-controlled) with
+  a note pointing at the new engine.
+### Fixed (found only under a full, unlimited, multi-catalog run)
+- `com_query.ps1`: a query returning **exactly one row** silently
+  corrupted on output - `$rows | ConvertTo-Json` (piping a 1-element
+  `ArrayList`) unwraps to a bare JSON object instead of a 1-element array,
+  a well-known PowerShell gotcha. The destination then iterated the row's
+  *fields* as if they were rows, producing `Invalid parameter value` on
+  `УникальныйИдентификатор("")`. Fixed with `ConvertTo-Json -InputObject`
+  (bypasses pipeline enumeration) instead of piping.
+- `com_query.ps1`: a query result with **exactly one column** marshals
+  its `Колонки` property as a scalar (the column object itself), not a
+  collection - `.Количество()` on it threw `Unknown name`. Fixed with a
+  try/catch fallback that treats the scalar as the single column.
+- `com_query.ps1`: **composite-type columns** (e.g. `Владелец`, the owner
+  of a subordinate catalog, valid as several different reference types)
+  throw `Member not found` via `GetProperty` COM binding - fixed with a
+  try/catch fallback to `InvokeMethod`, which retrieves the same value
+  correctly.
+- `migrator/engine.py`: cascaded catalog writes never passed a
+  `progress_log`, so `ЗаписатиЕлементи` silently wrote no per-item log at
+  all for cascades - the КассыККМ failures above were invisible until this
+  was fixed (each cascade now gets its own `cascade_<name>.log`).
+
 ## [0.7.0] - 2026-08-11
 ### Added
 - Three reusable Claude Code skills, distilled from this project's hardest

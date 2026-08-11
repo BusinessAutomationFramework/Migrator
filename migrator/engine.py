@@ -169,8 +169,13 @@ class TransferEngine:
             query = f"ВЫБРАТЬ * ИЗ {rule.ref_type}"
             rows = bridge_client.query_via_com(self.schema.source.connection_string, query)
             self.log(f"Каскад {rule.ref_type}: отримано {len(rows)} записів.")
-            summary = self.bridge.write_items(ref_kind, ref_name, rows)
-            self.log(f"Каскад {rule.ref_type}: {summary.splitlines()[0] if summary else summary}")
+            # Свій progress_log НА КОЖЕН каскадований довідник - інакше
+            # ЗаписатиЕлементи (без ФайлПрогресу) НЕ пише прогрес НІКУДИ, і
+            # окремі помилки по рядках стають невидимими (лишається тільки
+            # підсумкове число "Успешно").
+            progress_log = str(self.session_dir / f"cascade_{ref_name}.log") if self.session_dir else None
+            summary = self.bridge.write_items(ref_kind, ref_name, rows, progress_log=progress_log)
+            self.log(f"Каскад {rule.ref_type}: {summary}")
             visited.add(rule.ref_type)
             return
 

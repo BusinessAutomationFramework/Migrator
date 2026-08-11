@@ -172,10 +172,18 @@ function Read-QueryRows($connection, $queryText) {
             $colNames += (Get-Prop $col "Имя")
         }
     } else {
-        $colCount = Invoke-Method $columns "Количество"
-        for ($i = 0; $i -lt $colCount; $i++) {
-            $col = Invoke-Method $columns "Получить" @($i)
-            $colNames += (Get-Prop $col "Имя")
+        try {
+            $colCount = Invoke-Method $columns "Количество"
+            for ($i = 0; $i -lt $colCount; $i++) {
+                $col = Invoke-Method $columns "Получить" @($i)
+                $colNames += (Get-Prop $col "Имя")
+            }
+        } catch {
+            # Однокомпонентний SAFEARRAY (запит з РІВНО ОДНИМ полем у
+            # SELECT) маршалиться як СКАЛЯР - сам об'єкт колонки, а не
+            # колекція з "Количество"/"Получить" (перевірено емпірично:
+            # "Unknown name" на .Количество() для такого випадку).
+            $colNames += (Get-Prop $columns "Имя")
         }
     }
 
@@ -184,7 +192,16 @@ function Read-QueryRows($connection, $queryText) {
     while (Invoke-Method $selection "Следующий") {
         $row = [ordered]@{}
         foreach ($name in $colNames) {
-            $v = Get-Prop $selection $name
+            try {
+                $v = Get-Prop $selection $name
+            } catch {
+                # Складений тип колонки (напр. Владелец підпорядкованого
+                # довідника - кілька можливих типів посилання) - COM
+                # віддає значення ЛИШЕ через InvokeMethod; GetProperty дає
+                # "Member not found" (DISP_E_MEMBERNOTFOUND), перевірено
+                # емпірично на Справочник.КассыККМ.Владелец.
+                $v = Invoke-Method $selection $name
+            }
             $row[$name] = Convert-ComValue $v $connection
         }
         [void]$rows.Add($row)
@@ -232,7 +249,15 @@ if ($TabularParts) {
     }
 }
 
-$json = $rows | ConvertTo-Json -Depth 20 -Compress
+# -InputObject, НЕ пайп ("$rows | ConvertTo-Json") - класична пастка
+# PowerShell: пайп РОЗГОРТАЄ колекцію по одному елементу, і для РІВНО
+# ОДНОГО елемента ConvertTo-Json бачить лише ЦЕЙ елемент (не "масив з 1"),
+# серіалізуючи його як JSON-ОБ'ЄКТ {...} замість [{...}] - мовчки й без
+# помилки. Перевірено емпірично на Справочник.Календари (1 запис) -
+# приймач потім розбирав Структуру (поля рядка) як масив КлючЗначение
+# пар, "Ссылка" не знаходилась, звідси Invalid parameter value на
+# УникальныйИдентификатор("").
+$json = ConvertTo-Json -InputObject $rows -Depth 20 -Compress
 if ($rows.Count -eq 0) { $json = "[]" }
 [System.IO.File]::WriteAllText($OutFile, $json, [System.Text.UTF8Encoding]::new($false))
 Write-Output "OK: $($rows.Count) rows"
