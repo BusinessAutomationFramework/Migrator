@@ -10,11 +10,18 @@
 #
 # Вивід: JSON-масив рядків у файл -OutFile (у форматі __ref_type__/__ref_uuid__/
 # __enum_type__/__enum_value__, сумісному з ЗначениеЗJSON у BridgeTool).
+#
+# Табличні частини (-TabularParts): для кожної переданої назви ТЗ виконує
+# ОКРЕМИЙ запит "ВЫБРАТЬ * ИЗ <ObjectRef>.<ІмяТЗ>" (Ссылка - лінк на
+# власника), групує рядки за Ссылка і вкладає їх у відповідний рядок
+# головної вибірки під ключем = імені ТЗ - готово для ЗаписатиЕлементи.
 
 param(
     [Parameter(Mandatory)][string]$ConnectionString,
     [Parameter(Mandatory)][string]$QueryText,
-    [Parameter(Mandatory)][string]$OutFile
+    [Parameter(Mandatory)][string]$OutFile,
+    [string]$TabularParts = "",   # напр. "КонтактнаяИнформация,ДоступныеУслуги"
+    [string]$ObjectRef = ""       # напр. "Справочник.Склады" - обов'язково, якщо задано -TabularParts
 )
 
 $ErrorActionPreference = "Stop"
@@ -47,9 +54,8 @@ function Convert-ComValue($val, $connection) {
     if ($val -isnot [System.__ComObject]) {
         return $val
     }
-    # Табличні частини (КонтактнаяИнформация тощо) і подібні складні колекції
-    # не мають Метаданные() як прості значення - навмисно пропускаємо їх
-    # (як і в BSL-версії, табличні частини поза межами цього інструменту).
+    # Табличні частини як ЗНАЧЕННЯ окремого поля (не через -TabularParts)
+    # не мають Метаданные() як прості значення - навмисно пропускаємо їх.
     try {
         $meta = Invoke-Method $val "Метаданные"
         $fullName = Invoke-Method $meta "ПолноеИмя"
@@ -59,8 +65,7 @@ function Convert-ComValue($val, $connection) {
     $parts = $fullName -split '\.'
     $kind = $parts[0]
     if ($kind -eq "Перечисление") {
-        $valueName = Get-Prop $meta "Имя"
-        return [ordered]@{ "__enum_type__" = $parts[1]; "__enum_value__" = $valueName }
+        return Convert-EnumValue $val $meta $parts[1] $connection
     }
     try {
         $uuidObj = Invoke-Method $val "УникальныйИдентификатор"
@@ -72,38 +77,159 @@ function Convert-ComValue($val, $connection) {
     return [ordered]@{ "__ref_type__" = $fullName; "__ref_uuid__" = $uuidStr }
 }
 
+$script:EnumLookupCache = @{}  # ІмяТипуПереліку -> @{ ЗначениеВСтрокуВнутр-репр -> ІмяЗначення }
+
+function Get-EnumLookupMap($connection, $enumTypeName, $valuesMeta) {
+    if ($script:EnumLookupCache.ContainsKey($enumTypeName)) {
+        return $script:EnumLookupCache[$enumTypeName]
+    }
+    # Довідково СПРОБУВАНО і ВІДКИНУТО: глобальний менеджер "Перечисления"
+    # (Get-Prop $connection "Перечисления") через В83.COMConnector
+    # маршалиться в ПЛОСКИЙ .NET-масив БЕЗ пойменованого доступу за назвою
+    # типу (те саме - для "Справочники") - емпірично не працює для
+    # зовнішнього COM-з'єднання, хоч і задокументовано як "працює" у BSL
+    # (де Перечисления.Тип - синтаксис МОВИ, не COM-властивість).
+    #
+    # Натомість: будуємо LOOKUP-запит МОВОЮ ЗАПИТІВ - для кожної можливої
+    # назви значення (з метаданих типу, ЗначенияПеречисления - це працює
+    # надійно) через ЗНАЧЕНИЕ(Перечисление.Тип.Имя) отримуємо САМЕ значення,
+    # а ЗначениеВСтрокуВнутр() - його канонічний, стабільний за значенням
+    # (не за посиланням/RCW-обгорткою) рядок-репрезентацію. Раз побудована
+    # мапа кешується на весь час роботи скрипта (по одному lookup-запиту на
+    # ТИП переліку, не на кожне значення).
+    $names = @()
+    foreach ($valueMeta in $valuesMeta) { $names += (Get-Prop $valueMeta "Имя") }
+
+    $selects = foreach ($name in $names) {
+        # Рядкові літерали у МОВІ ЗАПИТІВ 1С - у ПОДВІЙНИХ лапках (не в
+        # одинарних, як у BSL) - одинарні лапки в мові запитів позначають
+        # ДАТУ, тому 'Ім'я' там - синтаксична помилка, а не рядок.
+        "ВЫБРАТЬ ЗНАЧЕНИЕ(Перечисление.$enumTypeName.$name) КАК Знач, `"$name`" КАК Имя"
+    }
+    $lookupQuery = ($selects -join "`nОБЪЕДИНИТЬ ВСЕ`n")
+
+    $query = Invoke-Method $connection "NewObject" @("Запрос")
+    Set-Prop $query "Текст" $lookupQuery
+    $result = Invoke-Method $query "Выполнить"
+    $selection = Invoke-Method $result "Выбрать"
+
+    $map = @{}
+    while (Invoke-Method $selection "Следующий") {
+        $rawValue = Get-Prop $selection "Знач"
+        $name = Get-Prop $selection "Имя"
+        $repr = Invoke-Method $connection "ЗначениеВСтрокуВнутр" @($rawValue)
+        $map[$repr] = $name
+    }
+    $script:EnumLookupCache[$enumTypeName] = $map
+    return $map
+}
+
+function Convert-EnumValue($val, $meta, $enumTypeName, $connection) {
+    # БАГ, який тут виправляємо: $meta = Invoke-Method $val "Метаданные" на
+    # ЗНАЧЕННІ переліку повертає метадані ТИПУ переліку (в переліків немає
+    # per-значення метаданих, як у елементів довідника) - тому
+    # "Get-Prop $meta Имя" завжди дає ІМ'Я ТИПУ (напр. "ТипыСкладов"), а НЕ
+    # ім'я конкретного значення. Дивись Get-EnumLookupMap за фактичним
+    # вирішенням - тут лише зіставляємо ПОТОЧНЕ значення з готовою мапою.
+    $valuesMeta = Get-Prop $meta "ЗначенияПеречисления"
+    $names = @()
+    foreach ($valueMeta in $valuesMeta) { $names += (Get-Prop $valueMeta "Имя") }
+    $fallback = [ordered]@{ "__enum_type__" = $enumTypeName; "__enum_value__" = $(if ($names.Count -gt 0) { $names[0] } else { $enumTypeName }) }
+    try {
+        $targetRepr = Invoke-Method $connection "ЗначениеВСтрокуВнутр" @($val)
+
+        # Емпірично встановлено: поле, яке ДЖЕРЕЛО ніколи не встановлювало
+        # явно (лишилось на типовому першому за метаданими значенні), у
+        # внутрішньому представленні має ІДЕНТИФІКАТОР-ЗАГЛУШКУ з самих
+        # нулів - на відміну від ЯВНО обраних значень (де ЗНАЧЕНИЕ(...)-
+        # запит дає справжній хеш). Тому нульовий хвіст напряму мапимо на
+        # ПЕРШЕ значення метаданих (ординал 0), без звернення до
+        # lookup-запиту (там його все одно не буде - його репр інший).
+        if ($targetRepr -match ':0+\}$') {
+            return [ordered]@{ "__enum_type__" = $enumTypeName; "__enum_value__" = $names[0] }
+        }
+
+        $map = Get-EnumLookupMap $connection $enumTypeName $valuesMeta
+        if ($map.ContainsKey($targetRepr)) {
+            return [ordered]@{ "__enum_type__" = $enumTypeName; "__enum_value__" = $map[$targetRepr] }
+        }
+    } catch {
+        return $fallback
+    }
+    return $fallback
+}
+
+function Read-QueryRows($connection, $queryText) {
+    $query = Invoke-Method $connection "NewObject" @("Запрос")
+    Set-Prop $query "Текст" $queryText
+
+    $result = Invoke-Method $query "Выполнить"
+    $columns = Get-Prop $result "Колонки"
+
+    $colNames = @()
+    if ($columns -is [System.Array]) {
+        foreach ($col in $columns) {
+            $colNames += (Get-Prop $col "Имя")
+        }
+    } else {
+        $colCount = Invoke-Method $columns "Количество"
+        for ($i = 0; $i -lt $colCount; $i++) {
+            $col = Invoke-Method $columns "Получить" @($i)
+            $colNames += (Get-Prop $col "Имя")
+        }
+    }
+
+    $selection = Invoke-Method $result "Выбрать"
+    $rows = New-Object System.Collections.ArrayList
+    while (Invoke-Method $selection "Следующий") {
+        $row = [ordered]@{}
+        foreach ($name in $colNames) {
+            $v = Get-Prop $selection $name
+            $row[$name] = Convert-ComValue $v $connection
+        }
+        [void]$rows.Add($row)
+    }
+    return ,$rows
+}
+
 $connector = New-Object -ComObject V83.COMConnector
 $src = $connector.Connect($ConnectionString)
 
-$query = Invoke-Method $src "NewObject" @("Запрос")
-Set-Prop $query "Текст" $QueryText
+$rows = Read-QueryRows $src $QueryText
 
-$result = Invoke-Method $query "Выполнить"
-$columns = Get-Prop $result "Колонки"
-
-$colNames = @()
-if ($columns -is [System.Array]) {
-    foreach ($col in $columns) {
-        $colNames += (Get-Prop $col "Имя")
+if ($TabularParts) {
+    if (-not $ObjectRef) {
+        throw "-TabularParts вимагає -ObjectRef (напр. 'Справочник.Склады')."
     }
-} else {
-    $colCount = Invoke-Method $columns "Количество"
-    for ($i = 0; $i -lt $colCount; $i++) {
-        $col = Invoke-Method $columns "Получить" @($i)
-        $colNames += (Get-Prop $col "Имя")
+    # Індекс за UUID власника для O(1) прив'язки ТЗ-рядків до головного рядка.
+    $rowsByOwner = @{}
+    foreach ($row in $rows) {
+        $ownerRef = $row["Ссылка"]
+        if ($null -ne $ownerRef -and $ownerRef.Contains("__ref_uuid__")) {
+            $rowsByOwner[$ownerRef["__ref_uuid__"]] = $row
+        }
     }
-}
 
-$selection = Invoke-Method $result "Выбрать"
+    foreach ($tsName in ($TabularParts -split ',')) {
+        $tsName = $tsName.Trim()
+        if (-not $tsName) { continue }
+        foreach ($row in $rows) { $row[$tsName] = New-Object System.Collections.ArrayList }
 
-$rows = New-Object System.Collections.ArrayList
-while (Invoke-Method $selection "Следующий") {
-    $row = [ordered]@{}
-    foreach ($name in $colNames) {
-        $v = Get-Prop $selection $name
-        $row[$name] = Convert-ComValue $v $src
+        $tsRows = Read-QueryRows $src "ВЫБРАТЬ * ИЗ $ObjectRef.$tsName"
+        foreach ($tsRow in $tsRows) {
+            $ownerRef = $tsRow["Ссылка"]
+            if ($null -eq $ownerRef -or -not $ownerRef.Contains("__ref_uuid__")) { continue }
+            $ownerUuid = $ownerRef["__ref_uuid__"]
+            if (-not $rowsByOwner.ContainsKey($ownerUuid)) { continue }
+
+            $tsRowCopy = [ordered]@{}
+            foreach ($key in $tsRow.Keys) {
+                if ($key -eq "Ссылка" -or $key -eq "НомерСтроки") { continue }
+                $tsRowCopy[$key] = $tsRow[$key]
+            }
+            [void]$rowsByOwner[$ownerUuid][$tsName].Add($tsRowCopy)
+        }
     }
-    [void]$rows.Add($row)
 }
 
 $json = $rows | ConvertTo-Json -Depth 20 -Compress

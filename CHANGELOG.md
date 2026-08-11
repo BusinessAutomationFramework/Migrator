@@ -3,6 +3,51 @@
 *(Ukrainian readers: this changelog is maintained in English only — see [README.uk.md](README.uk.md) for a Ukrainian project overview.)*
 *(Українською: цей журнал змін ведеться лише англійською — див. [README.uk.md](README.uk.md) для огляду проєкту українською.)*
 
+## [0.4.0] - 2026-08-11
+### Added
+- Tabular parts (табличные части) are now transferred end-to-end:
+  - `com_query.ps1 -TabularParts <names> -ObjectRef <Kind.Name>` runs one
+    extra query per declared tabular part (`SELECT * FROM <ObjectRef>.<TS>`)
+    and embeds each part's rows into the owning row, keyed by the part's
+    own name.
+  - `ObjectModule.bsl`: extracted the shared `ПрисвоитиПоле(...)` helper
+    (deserialize + Date() conversion + type-driven null coercion + write,
+    one field at a time) and reused it for both regular attributes and
+    tabular part columns; `ЗаписатиЕлементи` now detects tabular-part keys
+    via object metadata and fully replaces them (clear + re-add).
+  - `TransferSchema.tabular_parts` / `tabular_part_names`; `engine.py`
+    passes them through to `query_via_com`.
+- `ЗаписатиЕлементи` gained an optional `ДополнительныеСвойстваJSON` param -
+  a generic `{"Ключ": значення}` bag applied to `Объект.ДополнительныеСвойства`
+  before `Записать()`. Replaces the previously hardcoded
+  `ПропуститьОбновлениеФлагаКонтроляОперативныхОстатков` literal; this flag
+  is now declared per-task via `schema.yaml`'s `destination_write_options`.
+- `Bridge1C.write_items(..., additional_properties=...)` and
+  `query_via_com(..., tabular_parts=..., object_ref=...)` passthroughs.
+### Fixed
+- **Enum value bug** (present on both sides, same root cause: an enum
+  *value*'s `.Метаданные()` returns its *type*'s metadata, not a
+  per-value one, so `.Имя` always returned the type name):
+  - `com_query.ps1` (external COM, source-side reads): the global
+    `Перечисления` manager marshals to a plain, unindexable array over
+    `V83.COMConnector` (confirmed empirically, also true for
+    `Справочники`) - worked around by resolving each candidate value's
+    canonical form via a query-language lookup (`ЗНАЧЕНИЕ(Перечисление.
+    Тип.Имя)` + `ЗначениеВСтрокуВнутр()`), cached per enum type. Also
+    handles the "field never explicitly set" case, which stores a
+    distinct all-zero internal id that resolves to the type's first
+    metadata-defined value.
+  - `ObjectModule.bsl`'s `ЗначениеДляJSON` (local session, destination-side
+    reads via `ВыполнитьЗапрос`): fixed by linear-scanning
+    `Перечисления[Тип].Получить(i)` against metadata-declared value names
+    (`ИндексЗначения` turned out not to exist on the enum manager).
+### Verified
+- `python -m migrator run bukovel-legacy:warehouse --limit 5`: enum fields
+  (`ТипСклада`, plus 8 others) now resolve to real value names on both the
+  source-read and destination-read paths; a tabular part
+  (`ДоступныеУслуги`) with 13 rows transferred and confirmed present on
+  the DEV side; cascades to `ВидыЦен`/`СтруктураПредприятия` still work.
+
 ## [0.3.0] - 2026-08-11
 ### Added
 - `migrator/` Python package: the schema-driven transfer engine.

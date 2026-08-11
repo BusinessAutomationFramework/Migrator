@@ -94,6 +94,11 @@ class TransferSchema:
     related_catalogs: list[RelatedCatalogRule] = field(default_factory=list)
     tabular_parts: list[TabularPartSpec] = field(default_factory=list)
     hooks: list[HookSpec] = field(default_factory=list)
+    # {"additional_properties": {"Ключ": значення, ...}} - передається як
+    # ДополнительныеСвойстваJSON у ЗаписатиЕлементи (Phase 3) - обхідні
+    # прапорці бізнес-логіки приймача (напр. "не перераховувати похідні
+    # значення при імпорті"), схема-декларовані замість хардкоджених у BSL.
+    destination_write_options: dict = field(default_factory=dict)
     path: Path | None = None
 
     # Атрибути, без яких ЗаписатиЕлементи не може коректно розібрати
@@ -106,6 +111,18 @@ class TransferSchema:
 
     def hooks_for(self, stage: str) -> list[HookSpec]:
         return [h for h in self.hooks if h.stage == stage]
+
+    @property
+    def tabular_part_names(self) -> list[str]:
+        return [t.name for t in self.tabular_parts]
+
+    @property
+    def additional_properties(self) -> dict:
+        return self.destination_write_options.get("additional_properties", {})
+
+    @property
+    def object_ref(self) -> str:
+        return f"{self.kind}.{self.name}"
 
     def select_query(self, limit: int | None = None) -> str:
         top = f"ПЕРВЫЕ {limit} " if limit else ""
@@ -152,5 +169,6 @@ def load_schema(path: str | Path) -> TransferSchema:
         related_catalogs=related_catalogs,
         tabular_parts=tabular_parts,
         hooks=hooks,
+        destination_write_options=raw.get("destination_write_options", {}),
         path=path,
     )

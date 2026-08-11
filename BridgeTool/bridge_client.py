@@ -322,17 +322,32 @@ class Bridge1C:
             raise RuntimeError(f"Query failed: {result.get('error')}")
         return result["value"]
 
-    def write_items(self, kind: str, name: str, rows: list[dict], progress_log: str | None = None) -> str:
+    def write_items(
+        self,
+        kind: str,
+        name: str,
+        rows: list[dict],
+        progress_log: str | None = None,
+        additional_properties: dict | None = None,
+    ) -> str:
         """
         Записати рядки (у форматі, який повертає query()) у довідник/документ
         ЦІЄЇ бази. progress_log - опціональний шлях до файлу, куди BridgeTool
         писатиме прогрес ПООБ'ЄКТНО (одразу після кожного запису) - шлях
         визначає той, ХТО ВИКЛИКАЄ (кожне завдання переносу - свій лог у
         своїй папці), BridgeTool сам нічого не знає про конкретні завдання.
+        additional_properties - опціональний словник {"Ключ": значення, ...},
+        що йде в Объект.ДополнительныеСвойства ПЕРЕД записом кожного елемента -
+        загальний спосіб увімкнути обхідні прапорці бізнес-логіки приймача
+        (напр. "пропустити перерахунок похідних значень при імпорті"); які
+        саме потрібні - вирішує схема переносу, не цей клієнт.
         """
         rows_json = json.dumps(rows, ensure_ascii=False)
         args = [_bsl_string_literal(kind), _bsl_string_literal(name), _bsl_string_literal(rows_json)]
-        if progress_log:
+        if additional_properties:
+            args.append(_bsl_string_literal(progress_log or ""))
+            args.append(_bsl_string_literal(json.dumps(additional_properties, ensure_ascii=False)))
+        elif progress_log:
             args.append(_bsl_string_literal(progress_log))
         expr = f"ЗаписатиЕлементи({', '.join(args)})"
         result = self.call_expression(expr, timeout=300)
@@ -341,12 +356,21 @@ class Bridge1C:
         return result["value"]
 
 
-def query_via_com(connection_string: str, query_text: str, timeout: int = 120) -> list[dict]:
+def query_via_com(
+    connection_string: str,
+    query_text: str,
+    timeout: int = 120,
+    tabular_parts: list[str] | None = None,
+    object_ref: str | None = None,
+) -> list[dict]:
     """
     Читає дані з ІНШОЇ бази 1С через COM - виконується окремим процесом
     (32-бітний PowerShell, бо V83.COMConnector зареєстрований лише для
     32-біт), НЕ через BridgeTool. Повертає рядки у форматі, сумісному з
-    Bridge1C.write_items().
+    Bridge1C.write_items(). tabular_parts (+ обов'язковий разом з ним
+    object_ref, напр. "Справочник.Склады") - назви табличних частин, чиї
+    рядки com_query.ps1 підвантажить окремими запитами і вкладе під
+    відповідним ключем у кожен рядок головної вибірки.
     """
     out_file = COM_QUERY_SCRATCH
     if out_file.exists():
@@ -358,6 +382,10 @@ def query_via_com(connection_string: str, query_text: str, timeout: int = 120) -
         "-QueryText", query_text,
         "-OutFile", str(out_file),
     ]
+    if tabular_parts:
+        if not object_ref:
+            raise ValueError("tabular_parts вимагає object_ref (напр. 'Справочник.Склады')")
+        args += ["-TabularParts", ",".join(tabular_parts), "-ObjectRef", object_ref]
     proc = subprocess.run(args, capture_output=True, text=True, timeout=timeout)
     if proc.returncode != 0:
         raise RuntimeError(f"com_query.ps1 failed: {proc.stderr or proc.stdout}")

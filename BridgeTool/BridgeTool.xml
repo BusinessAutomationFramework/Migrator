@@ -19,7 +19,7 @@
 					<v8:content>Bridge tool</v8:content>
 				</v8:item>
 			</Synonym>
-			<Comment>Migrator BridgeTool build 0.2.0</Comment>
+			<Comment>Migrator BridgeTool build 0.4.0</Comment>
 			<DefaultForm>ExternalDataProcessor.BridgeTool.Form.Форма</DefaultForm>
 			<AuxiliaryForm/>
 		</Properties>

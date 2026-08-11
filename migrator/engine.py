@@ -107,7 +107,12 @@ class TransferEngine:
         self.log(f"Читання {schema.kind}.{schema.name} (джерело: {schema.source.connection})")
         if schema.source.connection != "com":
             raise ValueError(f"Непідтримуване джерело: {schema.source.connection!r}")
-        rows = bridge_client.query_via_com(schema.source.connection_string, ctx.query)
+        rows = bridge_client.query_via_com(
+            schema.source.connection_string,
+            ctx.query,
+            tabular_parts=schema.tabular_part_names or None,
+            object_ref=schema.object_ref if schema.tabular_part_names else None,
+        )
         self.log(f"Отримано {len(rows)} записів.")
         ctx.rows = rows
 
@@ -134,9 +139,12 @@ class TransferEngine:
         return result
 
     def _write(self, schema: TransferSchema, rows: list[dict], ctx: TransferContext, progress_log: str | None) -> str:
+        additional_properties = schema.additional_properties or None
         per_item_hooks = schema.hooks_for("after_each_item")
         if not per_item_hooks:
-            return self.bridge.write_items(schema.kind, schema.name, rows, progress_log=progress_log)
+            return self.bridge.write_items(
+                schema.kind, schema.name, rows, progress_log=progress_log, additional_properties=additional_properties
+            )
 
         # after_each_item вимагає СПРАВЖНЬОЇ пооб'єктної гранулярності -
         # пишемо по одному рядку за раз (BridgeTool вже запущений, тож
@@ -144,7 +152,9 @@ class TransferEngine:
         summaries = []
         total = len(rows)
         for index, row in enumerate(rows, start=1):
-            summaries.append(self.bridge.write_items(schema.kind, schema.name, [row], progress_log=progress_log))
+            summaries.append(self.bridge.write_items(
+                schema.kind, schema.name, [row], progress_log=progress_log, additional_properties=additional_properties
+            ))
             ctx.item, ctx.index, ctx.total = row, index, total
             hooks.run("after_each_item", ctx, per_item_hooks)
         total_count = sum(int(s.split("Итого: ")[1].split(",")[0]) for s in summaries if "Итого: " in s)
