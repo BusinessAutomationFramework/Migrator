@@ -3,6 +3,23 @@
 *(Ukrainian readers: this changelog is maintained in English only — see [README.uk.md](README.uk.md) for a Ukrainian project overview.)*
 *(Українською: цей журнал змін ведеться лише англійською — див. [README.uk.md](README.uk.md) для огляду проєкту українською.)*
 
+## [1.1.0] - 2026-08-11
+### Fixed
+- `ЗаписатиЕлементи` now sets the **standard** 1C `Объект.ОбменДанными.Загрузка = Истина`
+  flag before writing every object - not a bespoke bypass, but the
+  platform-standard signal that "this write is a data import," which
+  well-written business modules already check at the top of
+  `ПередЗаписью`/`ОбработкаПроверкиЗаполнения` to skip interactive-entry-
+  only validation. Found by dumping the destination's own
+  `Catalogs/КассыККМ/Ext/ObjectModule.bsl` and reading its actual
+  `ПередЗаписью` handler rather than guessing.
+### Verified
+- Full acceptance re-run: **Склады 131/131, all 8/8 cascaded catalogs
+  100%** - including `Справочник.КассыККМ` (159/159, previously 0/159
+  - see [0.8.0] for the original diagnosis). The "Склади" transfer is
+  now complete with no known remaining gaps beyond the previously
+  documented, expected serialization/group-record differences.
+
 ## [1.0.0] - 2026-08-11
 ### Summary
 First complete release. Starting from a hand-built, one-off pilot script
