@@ -3,6 +3,30 @@
 *(Ukrainian readers: this changelog is maintained in English only — see [README.uk.md](README.uk.md) for a Ukrainian project overview.)*
 *(Українською: цей журнал змін ведеться лише англійською — див. [README.uk.md](README.uk.md) для огляду проєкту українською.)*
 
+## [0.7.0] - 2026-08-11
+### Added
+- Three reusable Claude Code skills, distilled from this project's hardest
+  debugging sessions, added to the shared `cc-1c-skills` pack (a separate,
+  third-party-owned repo at `D:\Bukovel\Skills\cc-1c-skills\` - **not**
+  committed/pushed there by this step; that repo's git history is not ours
+  to touch without separate confirmation):
+  - `classic-xml-bsl-gotchas` - module-level `Перем` needing a compilation
+    directive, `ЗапускПараметр()` unavailable in safe mode, hand-edited
+    `Form.xml` `<ChildItems>` silently dropped, `-listFile` required for
+    partial `/DumpConfigToFiles`, and the enum-value `.Метаданные()` bug
+    (both the local-BSL and the external-COM manifestations, and their
+    respective fixes) found in Phase 3.
+  - `1c-thick-client-hang-diagnosis` - an escalation checklist for
+    "1cv8.exe started but isn't responding" (stale compiled artifact →
+    is the process even up → session/lock conflicts → ready-signal timing
+    → tech-log as a last resort).
+  - `1cv8-cmdline-quoting` - before/after Python `subprocess`/PowerShell
+    snippets for `1cv8.exe`'s `/Flag"value"` argument style, and the
+    failure signature when `list2cmdline`/PowerShell's tokenizer mangles it.
+### Note
+- No BridgeTool/COM changes this step - skills are documentation, not
+  code, so no E2E transfer test applies here.
+
 ## [0.6.0] - 2026-08-11
 ### Added
 - Bilingual documentation under `docs/` (EN primary + UK translation, same
