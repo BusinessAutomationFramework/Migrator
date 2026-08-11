@@ -1,0 +1,13 @@
+[project]
+name = "migrator"
+description = "Schema-driven data migration engine for 1C:Enterprise / BAF infobases, using BridgeTool (a local execution bridge) and COM (source-side reads)."
+readme = "README.md"
+requires-python = ">=3.10"
+dynamic = ["version"]
+
+[tool.setuptools.dynamic]
+version = { file = "VERSION" }
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"

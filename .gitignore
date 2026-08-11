@@ -1,0 +1,28 @@
+# Per-task working data - never public, regenerated every run
+TransferDATA/*/data/
+TransferDATA/*/logs/
+TransferDATA/*/exchange/
+TransferDATA/*/reports/*.tmp
+
+# BridgeTool runtime bootstrap file - written fresh by the launcher before
+# every 1cv8.exe spawn, never source
+BridgeTool/_launch_config.txt
+
+# Real local task-root registry (may reference private/machine-specific
+# paths) - same pattern as cc-1c-skills' .v8-project.json vs .example.json
+migrator.config.yaml
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+*.egg-info/
+gui/__pycache__/
+
+# Session/debug scratch that sometimes accumulates next to BridgeTool
+BridgeTool/_build_log.txt
+BridgeTool/_com_query_result.json
+BridgeTool/_dump_*
+BridgeTool/_window_titles*.txt
+BridgeTool/bridge/
+BridgeTool/techlog/

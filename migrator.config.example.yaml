@@ -1,0 +1,19 @@
+# Migrator task-root registry - TEMPLATE (committed to git).
+# Copy this file to migrator.config.yaml (gitignored) and adjust paths for
+# your machine. A task is addressed as "<root_name>:<task_id>" and resolves
+# to "<task_roots.<root_name>.path>/<task_id>/schema.yaml".
+version: 1
+default_task_root: default
+
+task_roots:
+  # Lives inside this repo - public/demo tasks only. data/logs/exchange are
+  # gitignored per-task; schema.yaml and reports/ are tracked.
+  default:
+    path: "./TransferDATA"
+
+  # Example of an EXTERNAL, independently git-managed directory (e.g. a
+  # private repo holding business-specific schemas). Migrator never
+  # initializes or pushes git repos other than its own - manage that
+  # directory's git state yourself.
+  # private:
+  #   path: "D:/Path/To/Private/Repo"

@@ -1,0 +1,4 @@
+* text=auto eol=lf
+*.epf binary
+*.dt binary
+*.cf binary
