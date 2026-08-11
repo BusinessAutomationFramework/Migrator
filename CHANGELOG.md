@@ -3,6 +3,25 @@
 *(Ukrainian readers: this changelog is maintained in English only — see [README.uk.md](README.uk.md) for a Ukrainian project overview.)*
 *(Українською: цей журнал змін ведеться лише англійською — див. [README.uk.md](README.uk.md) для огляду проєкту українською.)*
 
+## [1.3.0] - 2026-08-12
+### Fixed
+- `ЗаписатиЕлементи` (`BridgeTool/BridgeTool/Ext/ObjectModule.bsl`) no longer
+  fails a whole record when a predefined item is declared in the
+  destination's metadata but not yet materialized as data (destination
+  catalog/chart-of-characteristic-types set to `predefinedDataUpdate:
+  DontAutoUpdate` - the platform does not auto-create these, unlike mode
+  "Авто"). `ПредопределенноеЗначение()` throws "Предопределенный элемент
+  отсутствует в данных" in that case; the fallback now creates a fresh
+  element/document and assigns `ИмяПредопределенныхДанных` before the first
+  write - the standard 1C technique for binding a new object to an
+  already-declared predefined slot without a Configurator/Designer pass.
+  Found running the new `bukovel-legacy:services` task (Номенклатура 14/16,
+  ВидыНоменклатуры 69/71 on the first attempt; 16/16 and 71/71 after the fix).
+### Changed
+- BridgeTool build bumped to 1.3.0 (`BridgeTool.xml`, `ВерсіяBridgeTool()`)
+  via `stamp_version.py`, rebuilt with the `epf-build` skill against
+  `EDT_BASE\SKI`, and validated with `epf-validate` (0 errors).
+
 ## [1.2.0] - 2026-08-11
 ### Added
 - Optional `filter` field on `schema.yaml`: a raw 1C query-language `ГДЕ`
